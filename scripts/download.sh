@@ -11,6 +11,8 @@ do
     unzip -q ${f}
 done
 
+mv data/training_image data/train2017
+
 ln -s train2017 val2017
 
 gdown 1AwUn5EebmmLBo7njjW_Ng1q9zDrqkNbB # checkpoint0033_4scale.pth
