@@ -156,7 +156,7 @@ def export_coco(patient_data, patient_list, split_name):
             
             img_id += 1
             
-    save_path = os.path.join(OUTPUT_DIR, f"instances_{split_name}.json")
+    save_path = os.path.join(OUTPUT_DIR, f"instances_{split_name}2017.json")
     with open(save_path, 'w') as f:
         json.dump(coco_output, f)
 
