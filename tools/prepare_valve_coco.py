@@ -38,7 +38,7 @@ def get_single_yolo_box(label_file, w, h):
     abs_h = bh * h
     
     return {
-        "category_id": 1, 
+        "category_id": 0, 
         "bbox": [x_min, y_min, abs_w, abs_h],
         "area": abs_w * abs_h,
         "iscrowd": 0
@@ -120,7 +120,7 @@ def split_patients_stratified(patient_data):
 def export_coco(patient_data, patient_list, split_name):
     coco_output = {
         "info": {"description": "Aortic Valve Dataset"},
-        "categories": [{"id": 1, "name": "aortic_valve"}],
+        "categories": [{"id": 0, "name": "aortic_valve"}],
         "images": [],
         "annotations": []
     }

@@ -41,7 +41,7 @@ def get_args_parser():
     parser.add_argument('--fix_size', action='store_true')
 
     # training parameters
-    parser.add_argument('--output_dir', default='',
+    parser.add_argument('--output_dir', default='output',
                         help='path where to save, empty for no saving')
     parser.add_argument('--note', default='',
                         help='add some notes to the experiment')
