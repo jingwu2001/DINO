@@ -28,7 +28,7 @@ def main():
         return
 
     print(f"Loading weights from {CHECKPOINT_PATH}...")
-    checkpoint = torch.load(CHECKPOINT_PATH, map_location='cpu')
+    checkpoint = torch.load(CHECKPOINT_PATH, map_location='cpu', weights_only=False)
     model.load_state_dict(checkpoint['model'])
     model.to(DEVICE)
     model.eval()
