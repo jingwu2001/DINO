@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 # --- Configuration ---
 ROOT_DIR = "data"  # <--- CHANGE THIS
-IMAGE_DIR = os.path.join(ROOT_DIR, "training_image")
+IMAGE_DIR = os.path.join(ROOT_DIR, "train2017")
 LABEL_DIR = os.path.join(ROOT_DIR, "training_label")
 OUTPUT_DIR = os.path.join(ROOT_DIR, "annotations")
 VAL_SPLIT = 0.2
