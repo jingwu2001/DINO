@@ -11,7 +11,7 @@ from main import build_model_main
 CONFIG_FILE = "config/DINO/DINO_valve_4scale.py"
 # UPDATED PATH
 CHECKPOINT_PATH = "/content/DINO/logs/DINO/R50-MS4-valve/checkpoint.pth" 
-TEST_IMG_DIR = "/absolute/path/to/data/testing_image" # <--- VERIFY THIS PATH IS CORRECT
+TEST_IMG_DIR = "/content/DINO/data/testing_image" # <--- VERIFY THIS PATH IS CORRECT
 OUTPUT_FILE = "predictions.txt"
 CONFIDENCE_THRESHOLD = 0.3
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
