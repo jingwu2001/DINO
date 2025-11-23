@@ -133,6 +133,13 @@ def export_coco(patient_data, patient_list, split_name):
         images = patient_data[patient]['images']
         
         for img_entry in images:
+
+            if split_name == "train" and not img_entry['has_label']:
+                continue
+            
+            if split_name == "val" and not img_entry['has_label']:
+                 continue
+            
             # Image Info
             file_name = os.path.basename(img_entry['path'])
             # DINO expects relative path from the root of your coco_path
