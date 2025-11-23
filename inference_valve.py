@@ -8,10 +8,10 @@ from util.slconfig import SLConfig
 from main import build_model_main
 
 # --- Settings ---
-CONFIG_FILE = "config/DINO/DINO_4scale_valve.py"
-# Use the best checkpoint saved by main.py
-CHECKPOINT_PATH = "logs/DINO/R50-MS4-valve/checkpoint_best_regular.pth" 
-TEST_IMG_DIR = "/path/to/testing_image" # Update this path
+CONFIG_FILE = "config/DINO/DINO_valve_4scale.py"
+# UPDATED PATH
+CHECKPOINT_PATH = "/content/DINO/logs/DINO/R50-MS4-valve/checkpoint.pth" 
+TEST_IMG_DIR = "/absolute/path/to/data/testing_image" # <--- VERIFY THIS PATH IS CORRECT
 OUTPUT_FILE = "predictions.txt"
 CONFIDENCE_THRESHOLD = 0.3
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -23,7 +23,11 @@ def main():
     model, criterion, postprocessors = build_model_main(args)
     
     # Load trained weights
-    print(f"Loading weights from {CHECKPOINT_PATH}")
+    if not os.path.exists(CHECKPOINT_PATH):
+        print(f"Error: Checkpoint not found at {CHECKPOINT_PATH}")
+        return
+
+    print(f"Loading weights from {CHECKPOINT_PATH}...")
     checkpoint = torch.load(CHECKPOINT_PATH, map_location='cpu')
     model.load_state_dict(checkpoint['model'])
     model.to(DEVICE)
@@ -36,8 +40,11 @@ def main():
     ])
 
     results_lines = []
+    if not os.path.exists(TEST_IMG_DIR):
+         print(f"Error: Test image directory not found at {TEST_IMG_DIR}")
+         return
+
     image_files = [f for f in os.listdir(TEST_IMG_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-    
     print(f"Running inference on {len(image_files)} images...")
 
     with torch.no_grad():
@@ -63,25 +70,26 @@ def main():
             valid_labels = labels[keep]
             valid_boxes = boxes[keep]
             
-            for i in range(len(valid_scores)):
-                label = valid_labels[i].item()
-                score = valid_scores[i].item()
+            # Best Box Logic (Pick highest score if any exist)
+            if len(valid_scores) > 0:
+                best_idx = valid_scores.argmax()
                 
-                # Ensure we only output class 0
-                if label != 0: continue
-
-                # Un-normalize boxes (cx, cy, w, h) -> (x1, y1, x2, y2)
-                cx, cy, bw, bh = valid_boxes[i].tolist()
-                cx, cy, bw, bh = cx * w, cy * h, bw * w, bh * h
+                label = valid_labels[best_idx].item()
+                score = valid_scores[best_idx].item()
                 
-                x1 = max(0, cx - bw / 2)
-                y1 = max(0, cy - bh / 2)
-                x2 = min(w, cx + bw / 2)
-                y2 = min(h, cy + bh / 2)
+                if label == 0: # Ensure it is aortic valve
+                    # Un-normalize boxes (cx, cy, w, h) -> (x1, y1, x2, y2)
+                    cx, cy, bw, bh = valid_boxes[best_idx].tolist()
+                    cx, cy, bw, bh = cx * w, cy * h, bw * w, bh * h
+                    
+                    x1 = max(0, cx - bw / 2)
+                    y1 = max(0, cy - bh / 2)
+                    x2 = min(w, cx + bw / 2)
+                    y2 = min(h, cy + bh / 2)
 
-                # Format: image name, class, score, x1, y1, x2, y2
-                line = f"{img_name} {label} {score:.4f} {x1:.2f} {y1:.2f} {x2:.2f} {y2:.2f}"
-                results_lines.append(line)
+                    # Format: image name, class, score, x1, y1, x2, y2
+                    line = f"{img_name} {label} {score:.4f} {x1:.2f} {y1:.2f} {x2:.2f} {y2:.2f}"
+                    results_lines.append(line)
 
     # Write to file
     with open(OUTPUT_FILE, "w") as f:
