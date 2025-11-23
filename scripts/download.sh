@@ -6,10 +6,12 @@ do
     gdown ${url}
 done
 
-for f in test_image.zip training_image.zip training_label.zip
+for f in test_image.zip train2017.zip training_label.zip
 do 
     unzip -q ${f}
 done
+
+ln -s train2017 val2017
 
 gdown 1AwUn5EebmmLBo7njjW_Ng1q9zDrqkNbB # checkpoint0033_4scale.pth
 
