@@ -11,7 +11,7 @@ do
     unzip -q ${f}
 done
 
-mv data/training_image data/train2017
+mv training_image train2017
 
 ln -s train2017 val2017
 
