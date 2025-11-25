@@ -8,6 +8,9 @@ import time
 from pathlib import Path
 import os, sys
 import numpy as np
+# Patch for the "np.float" error in Python 3.12+
+if not hasattr(np, 'float'):
+    np.float = float
 
 import torch
 from torch.utils.data import DataLoader, DistributedSampler
