@@ -35,7 +35,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     if not wo_class_error:
         metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 100
+    print_freq = 10
 
     _cnt = 0
     for samples, targets in metric_logger.log_every(data_loader, print_freq, header, logger=logger):
@@ -155,7 +155,7 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
 
     _cnt = 0
     output_state_dict = {} # for debug only
-    for samples, targets in metric_logger.log_every(data_loader, 100, header, logger=logger):
+    for samples, targets in metric_logger.log_every(data_loader, 10, header, logger=logger):
         samples = samples.to(device)
 
         # targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
@@ -320,7 +320,7 @@ def test(model, criterion, postprocessors, data_loader, base_ds, device, output_
         )
 
     final_res = []
-    for samples, targets in metric_logger.log_every(data_loader, 100, header, logger=logger):
+    for samples, targets in metric_logger.log_every(data_loader, 10, header, logger=logger):
         samples = samples.to(device)
 
         # targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
