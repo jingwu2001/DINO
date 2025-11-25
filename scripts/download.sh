@@ -15,6 +15,12 @@ mv training_image train2017
 
 ln -s train2017 val2017
 
+cd ..
+
+
+mkdir -p ckpt
+cd ckpt
+
 gdown 1AwUn5EebmmLBo7njjW_Ng1q9zDrqkNbB # checkpoint0033_4scale.pth
 
 cd ..
