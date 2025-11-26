@@ -111,3 +111,8 @@ ema_decay = 0.9997
 ema_epoch = 0
 
 use_detached_boxes_dec_out = False
+
+data_aug_scales = [480, 512, 544, 576, 608, 640, 672]  # Multi-scale around your native resolution
+data_aug_max_size = 512            # Limit max size to 512 to avoid upscaling
+data_aug_scales2_resize = [400, 500, 600] # For strong augmentation if enabled
+data_aug_scales2_crop = [384, 600]

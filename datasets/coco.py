@@ -534,15 +534,15 @@ def make_coco_transforms(image_set, fix_size=False, strong_aug=False, args=None)
 
     if image_set in ['val', 'eval_debug', 'train_reg', 'test']:
 
-        if os.environ.get("GFLOPS_DEBUG_SHILONG", False) == 'INFO':
-            print("Under debug mode for flops calculation only!!!!!!!!!!!!!!!!")
-            return T.Compose([
-                T.ResizeDebug((1280, 800)),
-                normalize,
-            ])   
-
+        # if os.environ.get("GFLOPS_DEBUG_SHILONG", False) == 'INFO':
+        #     print("Under debug mode for flops calculation only!!!!!!!!!!!!!!!!")
+        #     return T.Compose([
+        #         T.ResizeDebug((1280, 800)),
+        #         normalize,
+        #     ])   
+        print("Validation transform")
         return T.Compose([
-            T.RandomResize([max(scales)], max_size=max_size),
+            # T.RandomResize([max(scales)], max_size=max_size),
             normalize,
         ])
 
@@ -632,6 +632,7 @@ def build(image_set, args):
         strong_aug = args.strong_aug
     except:
         strong_aug = False
+        print("strong aug disabled")
     dataset = CocoDetection(img_folder, ann_file, 
             transforms=make_coco_transforms(image_set, fix_size=args.fix_size, strong_aug=strong_aug, args=args), 
             return_masks=args.masks,
