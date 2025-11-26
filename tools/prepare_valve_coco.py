@@ -133,7 +133,7 @@ def export_coco(image_entries, positive_count, split_name):
         file_name = os.path.basename(img_entry['path'])
         # Rel path: e.g., "train2017/images/patient001.png"
         # DINO root is 'data', so we need path relative to 'data'
-        rel_path = os.path.join(f"{split_name}2017", "images", file_name)
+        rel_path = os.path.join("images", file_name)
         
         coco_output["images"].append({
             "id": img_id,
