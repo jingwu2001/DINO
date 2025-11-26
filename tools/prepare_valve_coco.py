@@ -136,9 +136,10 @@ def export_coco(patient_data, patient_list, split_name):
 
             if split_name == "train" and not img_entry['has_label']:
                 continue
-            
-            if split_name == "val" and not img_entry['has_label']:
-                 continue
+
+            # Keep all images in the validation set
+            # if split_name == "val" and not img_entry['has_label']:
+            #      continue
             
             # Image Info
             file_name = os.path.basename(img_entry['path'])
