@@ -152,6 +152,12 @@ def export_coco(patient_data, patient_list, split_name):
         neg_idx = 0
         for img_entry in images:
 
+            if split_name == "train" and not img_entry['has_label']:
+                continue
+            
+            if split_name == "val" and not img_entry['has_label']:
+                 continue
+
             # Training Split Logic: Handle Negative Sampling
             if split_name == "train" and not img_entry['has_label']:
                 # Safety: If we ran out of mask values (shouldn't happen with correct logic)
