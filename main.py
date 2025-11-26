@@ -172,7 +172,6 @@ def main(args):
 
     print(f"Length of training dataset: {len(dataset_train)}")
     print(f"Length of validation dataset: {len(dataset_val)}")
-    sys.exit()
 
     if args.distributed:
         sampler_train = DistributedSampler(dataset_train)
