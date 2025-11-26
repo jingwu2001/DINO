@@ -1,7 +1,7 @@
 mkdir -p data
 cd data
 
-# for url in 1_Z6LJXdoC16SwiIJ03c-yVU42jDvixjO 1IAnSJt2-NhWtOMugM7np0emBqs2IrYsj 1pJBKvOsNjPFTiy0-dm-pHDxmPhOuZxtJ  # training label, trainging image, test image
+# for url in 1_Z6LJXdoC16SwiIJ03c-yVU42jDvixjO 1IAnSJt2-NhWtOMugM7np0emBqs2IrYsj 1pJBKvOsNjPFTiy0-dm-pHDxmPhOuZxtJ  # training label, test image, training image
 # do 
 #     gdown ${url}
 # done
@@ -14,7 +14,7 @@ cd data
 # ln -s train2017 val2017
 
 
-for url in 1pJBKvOsNjPFTiy0-dm-pHDxmPhOuZxtJ 15WD2-haLeGe2JQeVe4iS4TUwoF6R-waO 1rwxLKn4MAy0pUYKEWwvBy8-v2XazD66S # test_image train13, val15
+for url in 1IAnSJt2-NhWtOMugM7np0emBqs2IrYsj 15WD2-haLeGe2JQeVe4iS4TUwoF6R-waO 1rwxLKn4MAy0pUYKEWwvBy8-v2XazD66S # test_image train13, val15
 do 
     gdown ${url}
 done
