@@ -8,11 +8,12 @@ from tqdm import tqdm
 
 # --- Configuration ---
 ROOT_DIR = "data"  # <--- CHANGE THIS
-IMAGE_DIR = os.path.join(ROOT_DIR, "train2017")
-LABEL_DIR = os.path.join(ROOT_DIR, "training_label")
+TRAIN_DIR = os.path.join(ROOT_DIR, "train2017")
+VAL_DIR = os.path.join(ROOT_DIR, "val2017")
+TRAIN_LABEL_DIR = os.path.join(TRAIN_DIR, "label")
+VAL_LABEL_DIR = os.path.join(VAL_DIR, "label")
 OUTPUT_DIR = os.path.join(ROOT_DIR, "annotations")
-VAL_SPLIT = 0.2
-NEGATIVE_RATIO = 0.1
+NEGATIVE_RATIO = 1.0 # Keep 1 negative for every 1 positive
 SEED = 42
 
 IMG_W, IMG_H = 512, 512 
@@ -49,21 +50,21 @@ def get_single_yolo_box(label_file, w, h):
         "iscrowd": 0
     }
 
-def scan_patients():
+def scan_patients(image_dir, label_dir):
     """
     Fast scan: Counts positives simply by checking if label file exists.
     """
     patient_data = {} 
     
-    print("Scanning dataset structure...")
+    print(f"Scanning dataset structure in {image_dir}...")
     
-    if not os.path.exists(IMAGE_DIR):
-        raise FileNotFoundError(f"Image directory not found: {IMAGE_DIR}")
+    if not os.path.exists(image_dir):
+        raise FileNotFoundError(f"Image directory not found: {image_dir}")
         
-    patient_folders = [d for d in os.listdir(IMAGE_DIR) if os.path.isdir(os.path.join(IMAGE_DIR, d))]
+    patient_folders = [d for d in os.listdir(image_dir) if os.path.isdir(os.path.join(image_dir, d))]
     
     for patient in tqdm(patient_folders):
-        patient_img_dir = os.path.join(IMAGE_DIR, patient)
+        patient_img_dir = os.path.join(image_dir, patient)
         patient_data[patient] = {'images': [], 'positive_count': 0}
         
         images = glob.glob(os.path.join(patient_img_dir, "*.*"))
@@ -74,10 +75,15 @@ def scan_patients():
             
             file_name = os.path.basename(img_path)
             base_name = os.path.splitext(file_name)[0]
-            label_path = os.path.join(LABEL_DIR, patient, base_name + ".txt")
+            label_path = os.path.join(label_dir, patient, base_name + ".txt")
             
             # OPTIMIZATION: Just check existence, don't open file
-            has_label = os.path.exists(label_path)
+            if not os.path.exists(label_path):
+                has_label = False
+            
+            # If the file is empty then also set has_label to False
+            if os.path.getsize(label_path) == 0:
+                has_label = False
             
             patient_data[patient]['images'].append({
                 'path': img_path,
@@ -90,37 +96,7 @@ def scan_patients():
             
     return patient_data
 
-def split_patients_stratified(patient_data):
-    """Splits patients ensuring Val gets ~20% of total positive samples."""
-    
-    patients = list(patient_data.keys())
-    random.shuffle(patients) 
-    
-    total_positives = sum(p['positive_count'] for p in patient_data.values())
-    target_val_positives = total_positives * VAL_SPLIT
-    
-    train_patients = []
-    val_patients = []
-    current_val_positives = 0
-    
-    for patient in patients:
-        p_positives = patient_data[patient]['positive_count']
-        
-        # Greedy assignment to Validation until target is hit
-        if current_val_positives < target_val_positives:
-            val_patients.append(patient)
-            current_val_positives += p_positives
-        else:
-            train_patients.append(patient)
-            
-    print("-" * 30)
-    print(f"Total Positive Images: {total_positives}")
-    print(f"Target Val Positives:  {int(target_val_positives)}")
-    print(f"Actual Val Positives:  {current_val_positives} ({current_val_positives/total_positives:.1%})")
-    print(f"Train Patients: {len(train_patients)} | Val Patients: {len(val_patients)}")
-    print("-" * 30)
-    
-    return train_patients, val_patients
+
 
 def export_coco(patient_data, patient_list, split_name):
     coco_output = {
@@ -151,24 +127,7 @@ def export_coco(patient_data, patient_list, split_name):
         
         neg_idx = 0
         for img_entry in images:
-
-            if split_name == "train" and not img_entry['has_label']:
-                continue
             
-            if split_name == "val" and not img_entry['has_label']:
-                 continue
-
-            # Training Split Logic: Handle Negative Sampling
-            if split_name == "train" and not img_entry['has_label']:
-                # Safety: If we ran out of mask values (shouldn't happen with correct logic)
-                if neg_idx >= len(add_to_train):
-                    continue
-                
-                keep_negative = add_to_train[neg_idx]
-                neg_idx += 1
-                
-                if not keep_negative:
-                    continue
             # Image Info
             file_name = os.path.basename(img_entry['path'])
             # DINO expects relative path from the root of your coco_path
@@ -200,16 +159,19 @@ def main():
     random.seed(SEED)
     np.random.seed(SEED)
     
-    # 1. Fast Scan
-    patient_data = scan_patients()
-    
-    # 2. Stratified Split
-    train_p, val_p = split_patients_stratified(patient_data)
-    
-    # 3. Export
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    export_coco(patient_data, train_p, "train")
-    export_coco(patient_data, val_p, "val")
+
+    # 1. Process Train
+    print("Processing Training Set...")
+    train_data = scan_patients(TRAIN_DIR, TRAIN_LABEL_DIR)
+    train_patients = list(train_data.keys())
+    export_coco(train_data, train_patients, "train")
+
+    # 2. Process Val
+    print("Processing Validation Set...")
+    val_data = scan_patients(VAL_DIR, VAL_LABEL_DIR)
+    val_patients = list(val_data.keys())
+    export_coco(val_data, val_patients, "val")
     
     print("Done!")
 
