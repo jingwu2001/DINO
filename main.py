@@ -170,6 +170,9 @@ def main(args):
     dataset_train = build_dataset(image_set='train', args=args)
     dataset_val = build_dataset(image_set='val', args=args)
 
+    print(f"Length of training dataset: {len(dataset_train)}")
+    print(f"Length of validation dataset: {len(dataset_val)}")
+
     if args.distributed:
         sampler_train = DistributedSampler(dataset_train)
         sampler_val = DistributedSampler(dataset_val, shuffle=False)

@@ -2,6 +2,8 @@ import os
 import json
 import glob
 import random
+import math
+import numpy as np
 from tqdm import tqdm
 
 # --- Configuration ---
@@ -10,6 +12,7 @@ IMAGE_DIR = os.path.join(ROOT_DIR, "train2017")
 LABEL_DIR = os.path.join(ROOT_DIR, "training_label")
 OUTPUT_DIR = os.path.join(ROOT_DIR, "annotations")
 VAL_SPLIT = 0.2
+NEGATIVE_RATIO = 0.1
 SEED = 42
 
 IMG_W, IMG_H = 512, 512 
@@ -22,10 +25,12 @@ def get_single_yolo_box(label_file, w, h):
     with open(label_file, 'r') as f:
         line = f.readline().strip() # Only read the first line
         
-    if not line: return None
+    if not line: 
+        return None
 
     parts = line.split()
-    if len(parts) != 5: return None
+    if len(parts) != 5: 
+        return None
     
     # YOLO: class, cx, cy, bw, bh
     # Class is ignored (assumed 0/aortic_valve), saved as ID 1
@@ -131,16 +136,33 @@ def export_coco(patient_data, patient_list, split_name):
     print(f"Generating {split_name}.json...")
     for patient in tqdm(patient_list):
         images = patient_data[patient]['images']
+        n_images = len(images)
+        positive_count = patient_data[patient]['positive_count']
+        negative_count = n_images - positive_count
+
+        if negative_count == 0:
+            add_to_train = [] 
+        else:
+            target = math.ceil(positive_count * NEGATIVE_RATIO)
+            negatives_needed = max(1, target)
+            negatives_needed = min(negatives_needed, negative_count)
+            add_to_train = np.array([True] * negatives_needed + [False] * (negative_count - negatives_needed))
+            add_to_train = np.random.permutation(add_to_train)
         
+        neg_idx = 0
         for img_entry in images:
 
+            # Training Split Logic: Handle Negative Sampling
             if split_name == "train" and not img_entry['has_label']:
-                continue
-
-            # Keep all images in the validation set
-            # if split_name == "val" and not img_entry['has_label']:
-            #      continue
-            
+                # Safety: If we ran out of mask values (shouldn't happen with correct logic)
+                if neg_idx >= len(add_to_train):
+                    continue
+                
+                keep_negative = add_to_train[neg_idx]
+                neg_idx += 1
+                
+                if not keep_negative:
+                    continue
             # Image Info
             file_name = os.path.basename(img_entry['path'])
             # DINO expects relative path from the root of your coco_path
@@ -170,6 +192,7 @@ def export_coco(patient_data, patient_list, split_name):
 
 def main():
     random.seed(SEED)
+    np.random.seed(SEED)
     
     # 1. Fast Scan
     patient_data = scan_patients()
