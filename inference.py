@@ -5,8 +5,40 @@ from PIL import Image
 import datasets.transforms as T
 from main import build_model_main
 from util.slconfig import SLConfig
+from util.misc import collate_fn
 import argparse
-from util.box_ops import box_cxcywh_to_xyxy
+from torch.utils.data import Dataset, DataLoader
+
+class SimpleImageDataset(Dataset):
+    def __init__(self, folder_path, transform=None):
+        self.folder_path = folder_path
+        self.transform = transform
+        self.image_paths = []
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                if file.lower().endswith((".png", ".jpg", ".jpeg")):
+                    self.image_paths.append(os.path.join(root, file))
+        self.image_paths.sort()
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        img_path = self.image_paths[idx]
+        try:
+            img_pil = Image.open(img_path).convert("RGB")
+            w, h = img_pil.size
+            if self.transform:
+                img_tensor, _ = self.transform(img_pil, None)
+            else:
+                img_tensor = T.ToTensor()(img_pil, None)[0]
+            return img_tensor, {"original_size": (h, w), "image_path": img_path}
+        except Exception as e:
+            print(f"Error loading {img_path}: {e}")
+            # Return a dummy tensor and info to avoid crashing the whole batch
+            # This is a bit risky but better than crashing. 
+            # Ideally we should filter these out beforehand.
+            return torch.zeros(3, 512, 512), {"original_size": (512, 512), "image_path": "ERROR"}
 
 def get_args_parser():
     parser = argparse.ArgumentParser(description="DINO Inference")
@@ -16,8 +48,8 @@ def get_args_parser():
     parser.add_argument("--output_file", default="predictions.txt", type=str)
     parser.add_argument("--device", default="cuda", type=str)
     parser.add_argument("--confidence_threshold", default=0.0, type=float)
-    # Add other args that might be needed by build_model_main if not in config
-    # Usually config has everything, but we need to merge them.
+    parser.add_argument("--batch_size", default=1, type=int)
+    parser.add_argument("--num_workers", default=0, type=int)
     return parser
 
 def main(args):
@@ -25,26 +57,13 @@ def main(args):
     cfg = SLConfig.fromfile(args.config_file)
     
     # Merge config into args
-    # This mimics what main.py does
     cfg_dict = cfg._cfg_dict.to_dict()
     args_vars = vars(args)
     for k,v in cfg_dict.items():
         if k not in args_vars:
             setattr(args, k, v)
-        else:
-            # If it's in args, we might want to keep the arg value (like device)
-            # But main.py raises ValueError if key is in both and not handled.
-            # Here we just let args override config if it exists, or config override args?
-            # main.py says: raise ValueError("Key {} can used by args only".format(k))
-            # This implies config keys should NOT be in args parser if they are in config.
-            # But we are using a simplified parser.
-            # Let's just set attributes safely.
-            pass
     
-    # Ensure device is set correctly in args (it's already there from parser)
-    
-    # Build model using build_model_main
-    # This returns model, criterion, postprocessors
+    # Build model
     model, criterion, postprocessors = build_model_main(args)
     model.to(args.device)
     model.eval()
@@ -61,69 +80,81 @@ def main(args):
     model.load_state_dict(state_dict, strict=False)
 
     # Transform
-    # Standard ImageNet normalization
     normalize = T.Compose([
         T.ToTensor(),
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
     transform = T.Compose([normalize])
 
-    # Find images
-    image_paths = []
-    for root, dirs, files in os.walk(args.input_folder):
-        for file in files:
-            if file.lower().endswith((".png", ".jpg", ".jpeg")):
-                image_paths.append(os.path.join(root, file))
+    # Dataset and DataLoader
+    dataset = SimpleImageDataset(args.input_folder, transform=transform)
+    print(f"Found {len(dataset)} images")
     
-    image_paths.sort()
-    print(f"Found {len(image_paths)} images")
+    # Custom collate to handle the extra info dict
+    def custom_collate(batch):
+        # batch is list of (tensor, dict)
+        tensors = [item[0] for item in batch]
+        infos = [item[1] for item in batch]
+        # Use util.misc.collate_fn logic for tensors (NestedTensor)
+        # But collate_fn expects a list of tensors, or list of (tensor, target)
+        # util.misc.collate_fn: 
+        #   batch = list(zip(*batch))
+        #   batch[0] = nested_tensor_from_tensor_list(batch[0])
+        #   return tuple(batch)
+        # So if we pass list of (tensor, info), it will return (NestedTensor, tuple(infos))
+        return collate_fn(batch)
+
+    data_loader = DataLoader(
+        dataset, 
+        batch_size=args.batch_size, 
+        shuffle=False, 
+        num_workers=args.num_workers,
+        collate_fn=custom_collate
+    )
 
     with open(args.output_file, 'w') as f:
-        for i, img_path in enumerate(image_paths):
-            if i % 100 == 0:
-                print(f"Processing {i}/{len(image_paths)}")
+        for i, (samples, infos) in enumerate(data_loader):
+            if i % 10 == 0:
+                print(f"Processing batch {i}/{len(data_loader)}")
             
             try:
-                # Load image
-                img_pil = Image.open(img_path).convert("RGB")
-                w, h = img_pil.size
-                
-                # Transform
-                img_tensor, _ = transform(img_pil, None)
-                img_tensor = img_tensor.unsqueeze(0).to(args.device)
+                samples = samples.to(args.device)
                 
                 # Inference
                 with torch.no_grad():
-                    outputs = model(img_tensor)
+                    outputs = model(samples)
                 
                 # Post-process
-                # PostProcess expects target_sizes as tensor of shape [batch_size, 2] (h, w)
-                target_sizes = torch.tensor([[h, w]], device=args.device)
+                # target_sizes needs to be [batch_size, 2]
+                target_sizes = torch.stack([torch.tensor(info["original_size"]) for info in infos]).to(args.device)
+                
                 results = postprocessors['bbox'](outputs, target_sizes)
                 
-                # Results is a list of dicts
-                result = results[0]
-                scores = result['scores']
-                labels = result['labels']
-                boxes = result['boxes'] # These are already xyxy and scaled to image size by PostProcess
-                
-                # Get image name without suffix
-                image_name = os.path.splitext(os.path.basename(img_path))[0]
-                
-                for j in range(len(scores)):
-                    score = scores[j].item()
-                    if score < args.confidence_threshold:
+                # Iterate over batch results
+                for j, result in enumerate(results):
+                    info = infos[j]
+                    img_path = info["image_path"]
+                    if img_path == "ERROR":
                         continue
+
+                    scores = result['scores']
+                    labels = result['labels']
+                    boxes = result['boxes']
                     
-                    label = labels[j].item()
-                    box = boxes[j].tolist()
+                    image_name = os.path.splitext(os.path.basename(img_path))[0]
                     
-                    # Format: image_name class confidence_score topleft_x topleft_y bottomleft_x bottomleft_y
-                    # box is x1, y1, x2, y2 (top-left, bottom-right)
-                    f.write(f"{image_name} {label} {score:.6f} {box[0]:.2f} {box[1]:.2f} {box[2]:.2f} {box[3]:.2f}\n")
+                    for k in range(len(scores)):
+                        score = scores[k].item()
+                        if score < args.confidence_threshold:
+                            continue
+                        
+                        label = labels[k].item()
+                        box = boxes[k].tolist()
+                        
+                        f.write(f"{image_name} {label} {score:.6f} {box[0]:.2f} {box[1]:.2f} {box[2]:.2f} {box[3]:.2f}\n")
             
             except Exception as e:
-                print(f"Error processing {img_path}: {e}")
+                print(f"Error processing batch {i}: {e}")
                 import traceback
                 traceback.print_exc()
 
