@@ -151,7 +151,10 @@ def main(args):
                         label = labels[k].item()
                         box = boxes[k].tolist()
                         
-                        f.write(f"{image_name} {label} {score:.6f} {box[0]:.2f} {box[1]:.2f} {box[2]:.2f} {box[3]:.2f}\n")
+                        # Round coordinates to nearest integer
+                        rounded_box = [int(round(c)) for c in box]
+                        
+                        f.write(f"{image_name} {label} {score:.6f} {rounded_box[0]} {rounded_box[1]} {rounded_box[2]} {rounded_box[3]}\n")
             
             except Exception as e:
                 print(f"Error processing batch {i}: {e}")
