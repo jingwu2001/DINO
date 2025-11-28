@@ -51,7 +51,7 @@ def main(args):
 
     # Load checkpoint
     print(f"Loading checkpoint from {args.checkpoint_path}")
-    checkpoint = torch.load(args.checkpoint_path, map_location=args.device)
+    checkpoint = torch.load(args.checkpoint_path, map_location=args.device, weights_only=False)
     if 'model' in checkpoint:
         state_dict = checkpoint['model']
     else:
