@@ -33,7 +33,7 @@ cd ..
 mkdir -p ckpt
 cd ckpt
 
-for url in 1AwUn5EebmmLBo7njjW_Ng1q9zDrqkNbB 1Slrekf60spGumTi2wh49Aww5iEmgXZEg 1eeAHgu-fzp28PGdIjeLe-pzGPMG2r2G_ 1DEoJzk8NL1hHQqTtDSkSHj5K6PRJ8bXq #checkpoint0033_4scale.pth, checkpoint0031_5scale.pth, checkpoint0011_4scale.pth, checkpoint0011_5scale.pth
+for url in 1AwUn5EebmmLBo7njjW_Ng1q9zDrqkNbB # 1Slrekf60spGumTi2wh49Aww5iEmgXZEg 1eeAHgu-fzp28PGdIjeLe-pzGPMG2r2G_ 1DEoJzk8NL1hHQqTtDSkSHj5K6PRJ8bXq #checkpoint0033_4scale.pth, checkpoint0031_5scale.pth, checkpoint0011_4scale.pth, checkpoint0011_5scale.pth
 do 
     gdown ${url}
 done

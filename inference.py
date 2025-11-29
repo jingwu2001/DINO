@@ -143,18 +143,19 @@ def main(args):
                     
                     image_name = os.path.splitext(os.path.basename(img_path))[0]
                     
-                    for k in range(len(scores)):
-                        score = scores[k].item()
-                        if score < args.confidence_threshold:
-                            continue
+                    if len(scores) > 0:
+                        # Find the index of the highest score
+                        max_idx = scores.argmax()
+                        score = scores[max_idx].item()
                         
-                        label = labels[k].item()
-                        box = boxes[k].tolist()
-                        
-                        # Round coordinates to nearest integer
-                        rounded_box = [int(round(c)) for c in box]
-                        
-                        f.write(f"{image_name} {label} {score:.6f} {rounded_box[0]} {rounded_box[1]} {rounded_box[2]} {rounded_box[3]}\n")
+                        if score >= args.confidence_threshold:
+                            label = labels[max_idx].item()
+                            box = boxes[max_idx].tolist()
+                            
+                            # Round coordinates to nearest integer
+                            rounded_box = [int(round(c)) for c in box]
+                            
+                            f.write(f"{image_name} {label} {score:.6f} {rounded_box[0]} {rounded_box[1]} {rounded_box[2]} {rounded_box[3]}\n")
             
             except Exception as e:
                 print(f"Error processing batch {i}: {e}")
